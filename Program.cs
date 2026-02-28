@@ -21,6 +21,8 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DBCon"));
 });
+builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IJwtAuthManager, JwtAuthManager>();
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
@@ -28,6 +30,11 @@ var userJwtTokenConfig = builder.Configuration.GetSection("userJwtTokenConfig").
 if (userJwtTokenConfig != null)
 {
     builder.Services.AddSingleton(userJwtTokenConfig);
+}
+var serverUrls = builder.Configuration.GetSection("serverUrls").Get<ServerUrls>();
+if (serverUrls != null)
+{
+    builder.Services.AddSingleton(serverUrls);
 }
 builder.Host.UseSerilog((context, services, configuration) => configuration
             .ReadFrom.Configuration(context.Configuration)  // Read settings from appsettings.json

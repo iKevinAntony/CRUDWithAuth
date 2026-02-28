@@ -5,9 +5,13 @@ using CRUDWithAuth.Models.DTO;
 using CRUDWithAuth.Models.Expense;
 using CRUDWithAuth.Services.IServices.Expense;
 using CRUDWithAuth.Services.IServices.Shared;
+using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using System.Data;
 using System.Net;
 
 namespace CRUDWithAuth.Services.Expense
@@ -18,12 +22,16 @@ namespace CRUDWithAuth.Services.Expense
         private readonly IHttpContextAccessor _httpConext;
         private readonly IActionContextAccessor _ipAddress;
         private readonly IFileUploadService _fileUploadService;
-        public ExpenseService(AppDBContext conn, IHttpContextAccessor httpConext, IActionContextAccessor ipAddress, IFileUploadService fileUploadService)
+        private readonly ServerUrls _serverUrls;
+        private readonly string _connectionString;
+        public ExpenseService(AppDBContext conn, IHttpContextAccessor httpConext, IActionContextAccessor ipAddress, IFileUploadService fileUploadService, IConfiguration configuration, ServerUrls serverUrls)
         {
             _conn = conn;
+            _connectionString = configuration.GetConnectionString("DBCon") ?? "";
             _httpConext = httpConext;
             _ipAddress = ipAddress;
             _fileUploadService = fileUploadService;
+            _serverUrls = serverUrls;
         }
         public async Task<ResponseDTO> AddExpense(ExpenseRequestDTO requestDTO)
         {
@@ -131,6 +139,46 @@ namespace CRUDWithAuth.Services.Expense
             }
             return result;
 
+        }
+
+        public async Task<ResponseDTO> GetAllExpenses(ExpenseFilterDTO requestDTO)
+        {
+            var response = new ResponseDTO();
+            var userGuid = _httpConext.HttpContext?.User?.Identity?.Name ?? "";
+            requestDTO.PageSize = requestDTO.PageSize < 1 ? 10 : requestDTO.PageSize;
+            requestDTO.PageNo = requestDTO.PageNo < 1 ? 1 : requestDTO.PageNo;
+            requestDTO.FromDate = requestDTO.FromDate ?? TimeStamps.UTCTime().ToString("dd-MMM-yyyy");
+            requestDTO.ToDate = requestDTO.ToDate ?? TimeStamps.UTCTime().AddMonths(-3).ToString("dd-MMM-yyyy");
+            requestDTO.SParam = requestDTO.SParam ?? "";
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("@PageSize", requestDTO.PageSize);
+                parameters.Add("@PageNo", requestDTO.PageNo);
+                parameters.Add("@FromDate", requestDTO.FromDate);
+                parameters.Add("@ToDate", requestDTO.ToDate);
+                parameters.Add("@SParam", requestDTO.SParam);
+
+                var expenses = (await connection.QueryAsync<ExpenseResponseDTO>(
+                    "dbo.GetExpenseList",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                )).ToList();
+
+                foreach (var expense in expenses)
+                {
+                    if (!string.IsNullOrEmpty(expense.Proof))
+                    {
+                        expense.Proof = _serverUrls.proofMediaFilePath + expense.Proof;
+                    }
+                }
+                response.IsSuccess = true;
+                response.Message = "Success";
+                response.ResponseCode = 200;
+                response.Result = expenses;
+                
+                return response;
+            }
         }
     }
 }

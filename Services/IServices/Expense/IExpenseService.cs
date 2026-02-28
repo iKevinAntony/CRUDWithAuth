@@ -5,5 +5,6 @@ namespace CRUDWithAuth.Services.IServices.Expense
     public interface IExpenseService
     {
         Task<ResponseDTO> AddExpense(ExpenseRequestDTO requestDTO);
+        Task<ResponseDTO> GetAllExpenses(ExpenseFilterDTO requestDTO);
     }
 }
