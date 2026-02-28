@@ -65,3 +65,17 @@ You can use the following demo account to test the APIs:
 ```bash
 git clone <https://github.com/iKevinAntony/CRUDWithAuth>
 cd CRUDWithAuth
+
+### 2. Setup Database
+- Navigate to the `DB Script` folder inside the project.
+- Open the SQL script file provided in the repository.
+- Execute the script in your SQL Server database using SSMS or any SQL client.
+- This will create all required tables and stored procedures needed for the application.
+
+### 3. Update Connection String
+Open `appsettings.json` and modify the database connection string as per your environment:
+
+```json
+"ConnectionStrings": {
+  "DBCon": "Server=YOUR_SERVER;Database=YOUR_DB;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
+}
