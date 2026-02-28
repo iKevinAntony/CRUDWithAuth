@@ -4,10 +4,15 @@ using CRUDWithAuth.Helpers;
 using CRUDWithAuth.Helpers.StaticEnums;
 using CRUDWithAuth.Services;
 using CRUDWithAuth.Services.AuthRoles;
+using CRUDWithAuth.Services.Expense;
 using CRUDWithAuth.Services.IServices;
 using CRUDWithAuth.Services.IServices.AuthRoles;
+using CRUDWithAuth.Services.IServices.Expense;
+using CRUDWithAuth.Services.IServices.Shared;
+using CRUDWithAuth.Services.Shared;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,15 +21,28 @@ builder.Services.AddDbContext<AppDBContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DBCon"));
 });
-
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IJwtAuthManager, JwtAuthManager>();
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
-var custJwtTokenConfig = builder.Configuration.GetSection("userJwtTokenConfig").Get<UserJwtTokenConfig>();
-if (custJwtTokenConfig != null)
+var userJwtTokenConfig = builder.Configuration.GetSection("userJwtTokenConfig").Get<UserJwtTokenConfig>();
+if (userJwtTokenConfig != null)
 {
-    builder.Services.AddSingleton(custJwtTokenConfig);
+    builder.Services.AddSingleton(userJwtTokenConfig);
 }
+builder.Host.UseSerilog((context, services, configuration) => configuration
+            .ReadFrom.Configuration(context.Configuration)  // Read settings from appsettings.json
+            .ReadFrom.Services(services)                    // Allows DI for loggers with enriched properties
+            .Enrich.FromLogContext()                        // Adds context properties to logs
+            .WriteTo.Console()                              // Write logs to console
+            .WriteTo.File("Logs/log.txt", rollingInterval: RollingInterval.Day)  // Write logs to a file with daily rotation
+        );
+
+#region Services
+
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
+builder.Services.AddScoped<IFileUploadService, FileUploadService>();
+#endregion
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -80,6 +98,7 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseCors("AllowAny");
 app.UseAuthentication();
 app.UseAuthorization();

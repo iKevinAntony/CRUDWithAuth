@@ -16,7 +16,6 @@ namespace CRUDWithAuth.Services
         private readonly AppDBContext _conn;
         private readonly IActionContextAccessor _ipAddress;
         private readonly IJwtAuthManager _jwtAuthManager;
-
         public AuthService(AppDBContext conn, IActionContextAccessor ipAddress,IJwtAuthManager jwtAuthManager)
         {
             _conn = conn;

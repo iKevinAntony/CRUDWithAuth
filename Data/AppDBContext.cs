@@ -1,5 +1,6 @@
 ﻿using CRUDWithAuth.Models.Auth;
 using CRUDWithAuth.Models.AuthRoles;
+using CRUDWithAuth.Models.Expense;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRUDWithAuth.Data
@@ -19,5 +20,6 @@ namespace CRUDWithAuth.Data
         }
         public DbSet<UserLogin> UserLogin { get; set; }
         public DbSet<UsersToken> UsersToken { get; set; }
+        public DbSet<ExpenseDetails> ExpenseDetails { get; set; }
     }
 }
