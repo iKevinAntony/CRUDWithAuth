@@ -1,4 +1,6 @@
-﻿using CRUDWithAuth.Data;
+﻿using AutoMapper;
+using Azure;
+using CRUDWithAuth.Data;
 using CRUDWithAuth.Helpers;
 using CRUDWithAuth.Helpers.StaticEnums;
 using CRUDWithAuth.Models.DTO;
@@ -23,8 +25,9 @@ namespace CRUDWithAuth.Services.Expense
         private readonly IActionContextAccessor _ipAddress;
         private readonly IFileUploadService _fileUploadService;
         private readonly ServerUrls _serverUrls;
+        private readonly IMapper _mapper;
         private readonly string _connectionString;
-        public ExpenseService(AppDBContext conn, IHttpContextAccessor httpConext, IActionContextAccessor ipAddress, IFileUploadService fileUploadService, IConfiguration configuration, ServerUrls serverUrls)
+        public ExpenseService(AppDBContext conn, IHttpContextAccessor httpConext, IActionContextAccessor ipAddress, IFileUploadService fileUploadService, IConfiguration configuration, ServerUrls serverUrls, IMapper mapper)
         {
             _conn = conn;
             _connectionString = configuration.GetConnectionString("DBCon") ?? "";
@@ -32,10 +35,11 @@ namespace CRUDWithAuth.Services.Expense
             _ipAddress = ipAddress;
             _fileUploadService = fileUploadService;
             _serverUrls = serverUrls;
+            _mapper = mapper;
         }
         public async Task<ResponseDTO> AddExpense(ExpenseRequestDTO requestDTO)
         {
-            var result = new ResponseDTO();
+            var response = new ResponseDTO();
             var addedBy = _httpConext.HttpContext?.User?.Identity?.Name;
             addedBy = addedBy ?? "";
             DateTime dateTime = TimeStamps.UTCTime();
@@ -47,10 +51,10 @@ namespace CRUDWithAuth.Services.Expense
 
             if (requestDTO.Amount <= 0)
             {
-                result.ResponseCode = StatusCodes.Status400BadRequest;
-                result.IsSuccess = false;
-                result.Message = "Amount must be greater than zero";
-                return result;
+                response.ResponseCode = StatusCodes.Status400BadRequest;
+                response.IsSuccess = false;
+                response.Message = "Amount must be greater than zero";
+                return response;
             }
             string stored = "";
             string storedType = "";
@@ -127,20 +131,19 @@ namespace CRUDWithAuth.Services.Expense
             int _saved = await _conn.SaveChangesAsync();
             if (_saved > 0)
             {
-                result.ResponseCode = StatusCodes.Status201Created;
-                result.IsSuccess = true;
-                result.Message = "Expense Added Successfully";
+                response.ResponseCode = StatusCodes.Status201Created;
+                response.IsSuccess = true;
+                response.Message = "Expense Added Successfully";
             }
             else
             {
-                result.ResponseCode = StatusCodes.Status500InternalServerError;
-                result.IsSuccess = false;
-                result.Message = "Failed to add expense";
+                response.ResponseCode = StatusCodes.Status500InternalServerError;
+                response.IsSuccess = false;
+                response.Message = "Failed to add expense";
             }
-            return result;
+            return response;
 
         }
-
         public async Task<ResponseDTO> GetAllExpenses(ExpenseFilterDTO requestDTO)
         {
             var response = new ResponseDTO();
@@ -174,11 +177,175 @@ namespace CRUDWithAuth.Services.Expense
                 }
                 response.IsSuccess = true;
                 response.Message = "Success";
-                response.ResponseCode = 200;
+                response.ResponseCode = StatusCodes.Status200OK;
                 response.Result = expenses;
-                
+
                 return response;
             }
         }
+        public async Task<ResponseDTO> GetExpense(string expenseGuid)
+        {
+            var response = new ResponseDTO();
+            var userGuid = _httpConext.HttpContext?.User?.Identity?.Name ?? "";
+            var expense = await _conn.ExpenseDetails.Where(e => e.ExpenseGuid == expenseGuid && e.Status != ExpenseStatuses.Deleted.ToString()).FirstOrDefaultAsync();
+            if (expense == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Expense not found";
+                response.ResponseCode = StatusCodes.Status404NotFound;
+                return response;
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(expense.Proof))
+                {
+                    expense.Proof = _serverUrls.proofMediaFilePath + expense.Proof;
+                }
+                response.IsSuccess = true;
+                response.Message = "Success";
+                response.ResponseCode = StatusCodes.Status200OK;
+                response.Result = _mapper.Map<ExpenseResponseDTO>(expense);
+                return response;
+            }
+        }
+        public async Task<ResponseDTO> UpdateExpense(ExpenseUpdateDTO requestDTO)
+        {
+            var response = new ResponseDTO();
+            var expense = await _conn.ExpenseDetails.Where(e => e.ExpenseGuid == requestDTO.ExpenseGuid && e.Status != ExpenseStatuses.Deleted.ToString()).FirstOrDefaultAsync();
+            if (expense == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Expense not found";
+                response.ResponseCode = StatusCodes.Status404NotFound;
+                return response;
+            }
+            var addedBy = _httpConext.HttpContext?.User?.Identity?.Name;
+            addedBy = addedBy ?? "";
+            DateTime dateTime = TimeStamps.UTCTime();
+            string _ip = CommonSettings.IPAddress(_ipAddress);
+            if (requestDTO.Amount <= 0)
+            {
+                response.ResponseCode = StatusCodes.Status400BadRequest;
+                response.IsSuccess = false;
+                response.Message = "Amount must be greater than zero";
+                return response;
+            }
+            string stored = expense.Proof;
+            string storedType = expense.ProofType;
+            if (requestDTO.Attachment != null)
+            {
+                string fileName = "";
+                Random rnd = new Random();
+                var ext = Path.GetExtension(requestDTO.Attachment.FileName);
+                var uniqueId = Guid.NewGuid().ToString("N");
+                fileName = "proof-" + uniqueId + "_" + Path.GetFileNameWithoutExtension(requestDTO.Attachment.FileName).Replace(" ", "-").Replace(".", "") + "_proof" + ext;
+                stored = await _fileUploadService.SaveFileAsync(requestDTO.Attachment, "ProofFiles", fileName);
+                string fileExtension = Path.GetExtension(requestDTO.Attachment.FileName).ToLower();
+                // Determine file type based on extension
+                storedType = fileExtension.ToLower() switch
+                {
+                    // Images
+                    ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".svg" => "Image",
+
+                    // Videos
+                    ".mp4" or ".mov" or ".avi" or ".mkv" or ".wmv" or ".flv" or ".webm" => "Video",
+
+                    // Audio
+                    ".mp3" or ".wav" or ".aac" or ".flac" or ".ogg" or ".wma" or ".m4a" => "Audio",
+
+                    // Documents
+                    ".pdf" => "PDF",
+                    ".doc" or ".docx" => "Word Document",
+                    ".xls" or ".xlsx" => "Excel Spreadsheet",
+                    ".ppt" or ".pptx" => "PowerPoint Presentation",
+                    ".txt" => "Text File",
+                    ".rtf" => "Rich Text File",
+                    ".odt" => "OpenDocument Text",
+                    ".ods" => "OpenDocument Spreadsheet",
+                    ".odp" => "OpenDocument Presentation",
+                    ".csv" => "CSV File",
+
+                    // Archives
+                    ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => "Archive",
+
+                    // Executables / Code
+                    ".exe" or ".msi" => "Executable",
+                    ".bat" or ".sh" => "Script",
+                    ".js" => "JavaScript File",
+                    ".py" => "Python File",
+                    ".java" => "Java File",
+                    ".c" or ".cpp" or ".h" or ".hpp" => "C/C++ Source File",
+                    ".cs" => "C# Source File",
+                    ".php" => "PHP File",
+                    ".html" or ".htm" => "HTML File",
+                    ".css" => "CSS File",
+
+                    // Default
+                    _ => "Unknown"
+                };
+            }
+            expense.CategoryName = requestDTO.CategoryName;
+            expense.Amount = requestDTO.Amount;
+            expense.Notes = requestDTO.Notes ?? "";
+            expense.Proof = stored;
+            expense.ProofType = storedType;
+            expense.UpdatedOn = dateTime;
+            expense.UpdatedBy = addedBy;
+            expense.UpdatedIP = _ip;
+            _conn.ExpenseDetails.Update(expense);
+            int _saved = await _conn.SaveChangesAsync();
+            if (_saved > 0)
+            {
+                response.ResponseCode = StatusCodes.Status200OK;
+                response.IsSuccess = true;
+                response.Message = "Expense Updated Successfully";
+            }
+            else
+            {
+                response.ResponseCode = StatusCodes.Status500InternalServerError;
+                response.IsSuccess = false;
+                response.Message = "Failed to update expense";
+            }
+            return response;
+
+        }
+
+        public async Task<ResponseDTO> DeleteExpense(string expenseGuid)
+        {
+            var response = new ResponseDTO();
+            var expense = await _conn.ExpenseDetails.Where(e => e.ExpenseGuid == expenseGuid && e.Status != ExpenseStatuses.Deleted.ToString()).FirstOrDefaultAsync();
+            if (expense == null)
+            {
+                response.IsSuccess = false;
+                response.Message = "Expense not found";
+                response.ResponseCode = StatusCodes.Status404NotFound;
+                return response;
+            }
+            var addedBy = _httpConext.HttpContext?.User?.Identity?.Name;
+            addedBy = addedBy ?? "";
+            DateTime dateTime = TimeStamps.UTCTime();
+            string _ip = CommonSettings.IPAddress(_ipAddress);
+            expense.Status = ExpenseStatuses.Deleted.ToString();
+            expense.UpdatedOn = dateTime;
+            expense.UpdatedBy = addedBy;
+            expense.UpdatedIP = _ip;
+            _conn.ExpenseDetails.Update(expense);
+            int _saved = await _conn.SaveChangesAsync();
+            if (_saved > 0)
+            {
+                response.ResponseCode = StatusCodes.Status200OK;
+                response.IsSuccess = true;
+                response.Message = "Expense Deleted Successfully";
+            }
+            else
+            {
+                response.ResponseCode = StatusCodes.Status500InternalServerError;
+                response.IsSuccess = false;
+                response.Message = "Failed to delete expense";
+            }
+            return response;
+
+        }
+
     }
 }

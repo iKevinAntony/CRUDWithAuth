@@ -2,8 +2,14 @@
 
 namespace CRUDWithAuth.Models.DTO
 {
-    public class ExpenseRequestDTO
+    public class ExpenseUpdateDTO
     {
+        /// <summary>
+        /// Gets or sets the guid of the expense.
+        /// </summary>
+        [Required]
+        [MaxLength(120)]
+        public string ExpenseGuid { get; set; } = string.Empty;
         /// <summary>
         /// Gets or sets the category name of the expense.
         /// </summary>
@@ -19,7 +25,7 @@ namespace CRUDWithAuth.Models.DTO
         /// <summary>
         /// Gets or sets the notes of the expense.
         /// </summary>
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
         /// <summary>
         /// Gets or sets the Proof of the expense.
         /// </summary>

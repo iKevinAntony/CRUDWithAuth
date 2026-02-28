@@ -4,6 +4,7 @@ using CRUDWithAuth.Services.IServices.Expense;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using static CRUDWithAuth.Helpers.ApiException;
 
 namespace CRUDWithAuth.Controllers
@@ -16,7 +17,6 @@ namespace CRUDWithAuth.Controllers
     public class ExpenseController : ControllerBase
     {
         private readonly IExpenseService _expenseService;
-
         public ExpenseController(IExpenseService expenseService)
         {
             _expenseService = expenseService;
@@ -55,7 +55,6 @@ namespace CRUDWithAuth.Controllers
                 return StatusCode(201, result);
             }
         }
-
         [HttpPost]
         [Route("filters")]
         public async Task<ActionResult> GetAllExpenses([FromBody] ExpenseFilterDTO requestDTO)
@@ -87,5 +86,111 @@ namespace CRUDWithAuth.Controllers
                 return StatusCode(200, result);
             }
         }
+        [HttpGet]
+        public async Task<ActionResult> GetExpense([FromQuery][Required] string expenseGuid)
+        {
+            if (!ModelState.IsValid)
+            {
+                ServerResult.ThrowMissingJSON();
+            }
+            var result = await _expenseService.GetExpense(expenseGuid);
+            if (result == null)
+            {
+                ServerResult.ThrowServerError("There is some problem now. Please try after some time.");
+                return StatusCode(500, result);
+            }
+            else if (!result.IsSuccess)
+            {
+                if (result.ResponseCode == 409)
+                {
+                    ServerResult.ThrowAlreadyExists(result.Message);
+                }
+                else if (result.ResponseCode == 404)
+                {
+                    ServerResult.ThrowDoesNotExist(result.Message);
+                }
+                else
+                {
+                    ServerResult.ThrowServerError(result.Message);
+                }
+                return StatusCode(500, result);
+            }
+            else
+            {
+                return StatusCode(201, result);
+            }
+        }
+
+        [HttpPut]
+        public async Task<ActionResult> UpdateExpense([FromForm] ExpenseUpdateDTO request)
+        {
+            if (!ModelState.IsValid)
+            {
+                ServerResult.ThrowMissingJSON();
+            }
+            var result = await _expenseService.UpdateExpense(request);
+            if (result == null)
+            {
+                ServerResult.ThrowServerError("There is some problem now. Please try after some time.");
+                return StatusCode(500, result);
+            }
+            else if (!result.IsSuccess)
+            {
+                if (result.ResponseCode == 409)
+                {
+                    ServerResult.ThrowAlreadyExists(result.Message);
+                }
+                else if (result.ResponseCode == 404)
+                {
+                    ServerResult.ThrowDoesNotExist(result.Message);
+                }
+                else
+                {
+                    ServerResult.ThrowServerError(result.Message);
+                }
+                return StatusCode(500, result);
+            }
+            else
+            {
+                return StatusCode(201, result);
+            }
+        }
+
+        [HttpDelete]
+        public async Task<ActionResult> DeleteExpense([FromQuery][Required] string expenseGuid)
+        {
+            if (!ModelState.IsValid)
+            {
+                ServerResult.ThrowMissingJSON();
+            }
+            var result = await _expenseService.DeleteExpense(expenseGuid);
+            if (result == null)
+            {
+                ServerResult.ThrowServerError("There is some problem now. Please try after some time.");
+                return StatusCode(500, result);
+            }
+            else if (!result.IsSuccess)
+            {
+                if (result.ResponseCode == 409)
+                {
+                    ServerResult.ThrowAlreadyExists(result.Message);
+                }
+                else if (result.ResponseCode == 404)
+                {
+                    ServerResult.ThrowDoesNotExist(result.Message);
+                }
+                else
+                {
+                    ServerResult.ThrowServerError(result.Message);
+                }
+                return StatusCode(500, result);
+            }
+            else
+            {
+                return StatusCode(201, result);
+            }
+        }
+
+
     }
 }
