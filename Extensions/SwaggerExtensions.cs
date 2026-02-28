@@ -24,7 +24,7 @@ namespace CRUDWithAuth.Extensions
                 {
                     Version = "v1",
                     Title = "User APIs",
-                    Description = "This is the first version (v1) of the backend APIs  in the \"CRUDWithAuth\" system. These APIs handle user authentication to ensure secure and efficient management of user permissions within the platform.",
+                    Description = "This is the first version (v1) of the backend APIs in the “CRUDWithAuth” system, designed to provide secure user authentication using JWT along with refresh token support, and to enable full CRUD operations for managing expenses with optional file uploads. The system follows a single-role authorization model, where all authenticated users have the same level of access to protected resources, ensuring simplicity while maintaining strong security. Users authenticate through the login endpoint to receive a short-lived access token and a long-lived refresh token, which are used to securely access and renew sessions for protected APIs. Once authenticated, users can create, view, update, and delete expense records, attach supporting files such as receipts or bills, and retrieve data using filtering and pagination features. These APIs follow RESTful principles and are secured using JWT Bearer authentication to ensure reliable, consistent, and secure expense management across the platform.",
                     Contact = new Microsoft.OpenApi.Models.OpenApiContact
                     {
                         Name = "Kevin Antony",

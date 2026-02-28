@@ -17,7 +17,11 @@ using System.Data;
 using System.Net;
 
 namespace CRUDWithAuth.Services.Expense
-{
+{/// <summary>
+/// Service responsible for handling business logic related to Expense management.
+/// Supports creating, retrieving, updating, deleting, and filtering expenses,
+/// along with file upload handling and audit tracking.
+/// </summary>
     public class ExpenseService : IExpenseService
     {
         private readonly AppDBContext _conn;
@@ -27,6 +31,16 @@ namespace CRUDWithAuth.Services.Expense
         private readonly ServerUrls _serverUrls;
         private readonly IMapper _mapper;
         private readonly string _connectionString;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ExpenseService"/> class.
+        /// </summary>
+        /// <param name="conn">Database context for expense persistence.</param>
+        /// <param name="httpConext">HTTP context accessor used to retrieve current user information.</param>
+        /// <param name="ipAddress">Action context accessor used to obtain request IP address.</param>
+        /// <param name="fileUploadService">Service for handling file uploads.</param>
+        /// <param name="configuration">Application configuration for database connection string.</param>
+        /// <param name="serverUrls">Server URL configuration for constructing media file paths.</param>
+        /// <param name="mapper">AutoMapper instance for mapping entities to DTOs.</param>
         public ExpenseService(AppDBContext conn, IHttpContextAccessor httpConext, IActionContextAccessor ipAddress, IFileUploadService fileUploadService, IConfiguration configuration, ServerUrls serverUrls, IMapper mapper)
         {
             _conn = conn;
@@ -37,6 +51,14 @@ namespace CRUDWithAuth.Services.Expense
             _serverUrls = serverUrls;
             _mapper = mapper;
         }
+        /// <summary>
+        /// Adds a new expense record with optional attachment and audit information.
+        /// Generates a unique expense ID and stores file metadata if provided.
+        /// </summary>
+        /// <param name="requestDTO">Expense request details including category, amount, notes, and optional attachment.</param>
+        /// <returns>
+        /// A <see cref="ResponseDTO"/> indicating success or failure along with status code and message.
+        /// </returns>
         public async Task<ResponseDTO> AddExpense(ExpenseRequestDTO requestDTO)
         {
             var response = new ResponseDTO();
@@ -144,6 +166,12 @@ namespace CRUDWithAuth.Services.Expense
             return response;
 
         }
+        /// <summary>
+        /// Retrieves a paginated and filtered list of expenses using a stored procedure.
+        /// Also appends full file URLs for proof attachments.
+        /// </summary>
+        /// <param name="requestDTO">Filtering parameters including date range, search text, and pagination details.</param>
+        /// <returns>A response containing a list of filtered expenses.</returns>
         public async Task<ResponseDTO> GetAllExpenses(ExpenseFilterDTO requestDTO)
         {
             var response = new ResponseDTO();
@@ -183,6 +211,11 @@ namespace CRUDWithAuth.Services.Expense
                 return response;
             }
         }
+        /// <summary>
+        /// Retrieves a specific expense by its unique GUID.
+        /// </summary>
+        /// <param name="expenseGuid">Unique identifier of the expense.</param>
+        /// <returns>Expense details if found; otherwise returns not found response.</returns>
         public async Task<ResponseDTO> GetExpense(string expenseGuid)
         {
             var response = new ResponseDTO();
@@ -208,6 +241,11 @@ namespace CRUDWithAuth.Services.Expense
                 return response;
             }
         }
+        /// <summary>
+        /// Updates an existing expense record and optionally replaces its attachment.
+        /// </summary>
+        /// <param name="requestDTO">Updated expense details including GUID and optional new attachment.</param>
+        /// <returns>Response indicating whether the update was successful.</returns>
         public async Task<ResponseDTO> UpdateExpense(ExpenseUpdateDTO requestDTO)
         {
             var response = new ResponseDTO();
@@ -309,7 +347,12 @@ namespace CRUDWithAuth.Services.Expense
             return response;
 
         }
-
+        /// <summary>
+        /// Soft deletes an expense by marking its status as Deleted.
+        /// Maintains audit fields such as updated time, user, and IP address.
+        /// </summary>
+        /// <param name="expenseGuid">Unique identifier of the expense to delete.</param>
+        /// <returns>Response indicating whether the delete operation was successful.</returns>
         public async Task<ResponseDTO> DeleteExpense(string expenseGuid)
         {
             var response = new ResponseDTO();

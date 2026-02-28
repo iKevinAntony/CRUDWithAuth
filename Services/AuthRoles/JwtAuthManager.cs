@@ -14,19 +14,31 @@ using System.Text;
 
 namespace CRUDWithAuth.Services.AuthRoles
 {
+    /// <summary>
+    /// Manages JWT authentication and refresh token lifecycle for users.
+    /// Responsible for generating access tokens, issuing refresh tokens,
+    /// validating tokens, and refreshing expired JWT tokens securely.
+    /// </summary>
     public class JwtAuthManager : IJwtAuthManager
     {
+        /// <summary>
+        /// Gets a read-only dictionary containing all active refresh tokens mapped by token string.
+        /// </summary>
         public IImmutableDictionary<string, RefreshToken> UsersRefreshTokensReadOnlyDictionary => _usersRefreshTokens.ToImmutableDictionary();
         private readonly ConcurrentDictionary<string, RefreshToken> _usersRefreshTokens;
         private readonly UserJwtTokenConfig _userJwtTokenConfig;
         private readonly byte[] _usersecret;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JwtAuthManager"/> class.
+        /// </summary>
+        /// <param name="userJwtTokenConfig">Configuration containing issuer, audience, secret, and expiration settings.</param>
         public JwtAuthManager(UserJwtTokenConfig userJwtTokenConfig)
         {
             _userJwtTokenConfig = userJwtTokenConfig;
             _usersecret = Encoding.ASCII.GetBytes(userJwtTokenConfig.Secret);
             _usersRefreshTokens = new ConcurrentDictionary<string, RefreshToken>();
         }
-        #region Customer
+        #region User
         /// <summary>
         /// Generates JWT and refresh tokens for  user.
         /// </summary>
@@ -143,7 +155,10 @@ namespace CRUDWithAuth.Services.AuthRoles
             return (principal, validatedToken as JwtSecurityToken);
         }
         #endregion
-
+        /// <summary>
+        /// Generates a secure random refresh token string using a cryptographic random number generator.
+        /// </summary>
+        /// <returns>A base64-encoded random string representing the refresh token.</returns>
         private static string GenerateRefreshTokenString()
         {
             var randomNumber = new byte[32];
