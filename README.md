@@ -80,4 +80,8 @@ Open `appsettings.json` and modify the database connection string as per your en
 "ConnectionStrings": {
   "DBCon": "Server=YOUR_SERVER;Database=YOUR_DB;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
 }
-```	
+```
+## Author
+**Kevin Antony**  
+.NET MAUI & ASP.NET Core Developer  
+3+ years experience building scalable client applications
