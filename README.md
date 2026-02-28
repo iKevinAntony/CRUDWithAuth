@@ -65,6 +65,7 @@ You can use the following demo account to test the APIs:
 ```bash
 git clone <https://github.com/iKevinAntony/CRUDWithAuth>
 cd CRUDWithAuth
+```
 
 ### 2. Setup Database
 - Navigate to the `DB Script` folder inside the project.
@@ -79,3 +80,4 @@ Open `appsettings.json` and modify the database connection string as per your en
 "ConnectionStrings": {
   "DBCon": "Server=YOUR_SERVER;Database=YOUR_DB;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
 }
+```	
